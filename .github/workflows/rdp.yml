@@ -3,28 +3,29 @@ name: Free RDP with Cloudflare
 on: workflow_dispatch
 
 jobs:
-  rdp:
+  build:
     runs-on: windows-latest
     steps:
-    - name: Enable RDP
+    - name: Set strong password & Enable RDP
       run: |
-        net user runneradmin RdpTest@123
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+        net user runneradmin "RdpTest@123"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Get-NetFirewallRule -DisplayName "Remote Desktop - User Mode (TCP-In)" | Set-NetFirewallRule -Enabled True
 
     - name: Download cloudflared
-      shell: bash
+      shell: powershell
       run: |
-        curl -L -o cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+        Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "cloudflared.exe"
 
     - name: Start Cloudflare Tunnel
       run: |
-        Start-Process -NoNewWindow -FilePath ".\cloudflared.exe" -ArgumentList "tunnel", "--url", "tcp://localhost:3389"
+        Start-Process -WindowStyle hidden -FilePath ".\cloudflared.exe" -ArgumentList "tunnel", "--url", "tcp://localhost:3389"
+        Start-Sleep -Seconds 10
 
-    - name: Keep Alive
+    - name: Keep job alive
       run: |
         for ($i = 0; $i -lt 360; $i++) {
-          Write-Host "Running... $i"
+          Write-Output "Alive minute $i"
           Start-Sleep -Seconds 60
         }
-
