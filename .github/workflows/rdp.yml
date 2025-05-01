@@ -1,0 +1,29 @@
+name: Free RDP with Cloudflare
+
+on: workflow_dispatch
+
+jobs:
+  rdp:
+    runs-on: windows-latest
+    steps:
+    - name: Enable RDP
+      run: |
+        net user runneradmin 12345
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - name: Download cloudflared
+      shell: bash
+      run: |
+        curl -L -o cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+
+    - name: Start Cloudflare Tunnel
+      run: |
+        Start-Process -NoNewWindow -FilePath ".\cloudflared.exe" -ArgumentList "tunnel", "--url", "tcp://localhost:3389"
+
+    - name: Keep Alive
+      run: |
+        for ($i = 0; $i -lt 360; $i++) {
+          Write-Host "Running... $i"
+          Start-Sleep -Seconds 60
+        }
